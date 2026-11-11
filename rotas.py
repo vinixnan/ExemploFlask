@@ -1,15 +1,15 @@
-"""Camada HTTP: converte JSON em objetos e chama os DAOs."""
 import sqlite3
+
 from flask import Blueprint, request, url_for
-from banco import obter_conexao
-from dao import AlunoDAO, DisciplinaDAO, MatriculaDAO
-from modelos import Aluno
+
+from core.banco import BancoSQLite
+from model.dao import AlunoDAO, DisciplinaDAO, MatriculaDAO
+from model.modelos import Aluno
 
 api = Blueprint("api", __name__)
 
 
 def _validar_aluno(dados, nusp_url=None):
-    """PUT/POST exigem um aluno completo; não é PATCH."""
     if not isinstance(dados, dict):
         return None, "Corpo deve ser um objeto JSON"
     campos = ("nome", "email", "curso", "ano_ingresso")
@@ -23,30 +23,39 @@ def _validar_aluno(dados, nusp_url=None):
         if "nusp" in dados and dados["nusp"] != nusp_url:
             return None, "nusp no JSON difere da URL"
         nusp = nusp_url
-    if any(not isinstance(dados[c], str) or not dados[c].strip()
-           for c in ("nome", "email", "curso")):
+    if any(
+        not isinstance(dados[c], str) or not dados[c].strip()
+        for c in ("nome", "email", "curso")
+    ):
         return None, "nome, email e curso devem ser textos não vazios"
     if type(dados["ano_ingresso"]) is not int:
         return None, "ano_ingresso deve ser inteiro"
-    return Aluno(nusp, dados["nome"], dados["email"],
-                 dados["curso"], dados["ano_ingresso"]), None
+    return (
+        Aluno(
+            nusp, dados["nome"], dados["email"], dados["curso"], dados["ano_ingresso"]
+        ),
+        None,
+    )
 
 
 @api.get("/")
 def inicio():
-    return {"mensagem": "API da universidade", "recursos": ["/alunos", "/disciplinas", "/matriculas"]}
+    return {
+        "mensagem": "API da universidade",
+        "recursos": ["/alunos", "/disciplinas", "/matriculas"],
+    }
 
 
 @api.get("/alunos")
 def listar_alunos():
-    dao = AlunoDAO(obter_conexao())
+    dao = AlunoDAO()
     curso = request.args.get("curso")
     return [aluno.to_dict() for aluno in dao.listar(curso)]
 
 
 @api.get("/alunos/<int:nusp>")
 def buscar_aluno(nusp):
-    aluno = AlunoDAO(obter_conexao()).buscar(nusp)
+    aluno = AlunoDAO().buscar(nusp)
     if aluno is None:
         return {"erro": "Aluno não encontrado"}, 404
     return aluno.to_dict(), 200
@@ -58,11 +67,15 @@ def criar_aluno():
     if erro:
         return {"erro": erro}, 400
     try:
-        AlunoDAO(obter_conexao()).inserir(aluno)
+        AlunoDAO().inserir(aluno)
     except sqlite3.IntegrityError:
-        obter_conexao().rollback()
+        BancoSQLite().conexao.rollback()
         return {"erro": "NUSP já cadastrado"}, 409
-    return aluno.to_dict(), 201, {"Location": url_for("api.buscar_aluno", nusp=aluno.nusp)}
+    return (
+        aluno.to_dict(),
+        201,
+        {"Location": url_for("api.buscar_aluno", nusp=aluno.nusp)},
+    )
 
 
 @api.put("/alunos/<int:nusp>")
@@ -70,7 +83,7 @@ def atualizar_aluno(nusp):
     aluno, erro = _validar_aluno(request.get_json(silent=True), nusp_url=nusp)
     if erro:
         return {"erro": erro}, 400
-    if AlunoDAO(obter_conexao()).atualizar(aluno) == 0:
+    if AlunoDAO().atualizar(aluno) == 0:
         return {"erro": "Aluno não encontrado"}, 404
     return aluno.to_dict(), 200
 
@@ -78,9 +91,9 @@ def atualizar_aluno(nusp):
 @api.delete("/alunos/<int:nusp>")
 def excluir_aluno(nusp):
     try:
-        removidos = AlunoDAO(obter_conexao()).excluir(nusp)
+        removidos = AlunoDAO().excluir(nusp)
     except sqlite3.IntegrityError:
-        obter_conexao().rollback()
+        BancoSQLite().conexao.rollback()
         return {"erro": "Aluno possui matrículas vinculadas"}, 409
     if removidos == 0:
         return {"erro": "Aluno não encontrado"}, 404
@@ -89,17 +102,17 @@ def excluir_aluno(nusp):
 
 @api.get("/disciplinas")
 def listar_disciplinas():
-    return [d.to_dict() for d in DisciplinaDAO(obter_conexao()).listar()]
+    return [d.to_dict() for d in DisciplinaDAO().listar()]
 
 
 @api.get("/matriculas")
 def listar_matriculas():
-    return [m.to_dict() for m in MatriculaDAO(obter_conexao()).listar()]
+    return [m.to_dict() for m in MatriculaDAO().listar()]
 
 
 @api.get("/matriculas/<int:id_matricula>")
 def buscar_matricula(id_matricula):
-    m = MatriculaDAO(obter_conexao()).buscar(id_matricula)
+    m = MatriculaDAO().buscar(id_matricula)
     if m is None:
         return {"erro": "Matrícula não encontrada"}, 404
     return m.to_dict(), 200

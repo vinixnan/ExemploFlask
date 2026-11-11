@@ -1,0 +1,24 @@
+TESTES HTTPie
+
+Execute "python main.py" em outro terminal e instale o cliente HTTPie:
+python -m pip install httpie
+
+Envie um comando por vez:
+
+http GET http://127.0.0.1:5000/
+http GET http://127.0.0.1:5000/alunos
+http GET http://127.0.0.1:5000/alunos/95633
+http GET 'http://127.0.0.1:5000/alunos?curso=Engenharia%20de%20Computa%C3%A7%C3%A3o'
+http POST http://127.0.0.1:5000/alunos nusp:=88888888 nome=Bruno email=bruno@usp.br curso=Computacao ano_ingresso:=2026
+http PUT http://127.0.0.1:5000/alunos/88888888 nome='Bruno Silva' email=bruno@usp.br curso=Computacao ano_ingresso:=2026
+http DELETE http://127.0.0.1:5000/alunos/88888888
+http GET http://127.0.0.1:5000/disciplinas
+http GET http://127.0.0.1:5000/matriculas
+
+Respostas de erro para experimentar:
+http GET http://127.0.0.1:5000/alunos/999999
+http POST http://127.0.0.1:5000/alunos nusp:=95633 nome=Outra email=outra@usp.br curso=Computacao ano_ingresso:=2026
+http DELETE http://127.0.0.1:5000/alunos/95633
+
+Em HTTPie, campo=valor envia texto; campo:=2026 envia número JSON.
+O HTTPie é um cliente opcional; não é dependência do servidor.

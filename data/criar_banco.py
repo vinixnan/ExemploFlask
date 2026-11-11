@@ -1,9 +1,10 @@
-"""Execute UMA VEZ (ou novamente, sem duplicar os dados de exemplo)."""
-from banco import CAMINHO_BANCO, abrir_arquivo
+from core.banco import BancoSQLite
+from core.definitions import ARQUIVO_BANCO
 
 
 def criar_tabelas():
-    conexao = abrir_arquivo()
+    banco = BancoSQLite()
+    conexao = banco.conexao
     try:
         conexao.execute("""
             CREATE TABLE IF NOT EXISTS alunos (
@@ -32,23 +33,10 @@ def criar_tabelas():
                 FOREIGN KEY (codigo_disciplina) REFERENCES disciplinas(codigo_disciplina)
             )
         """)
-        conexao.execute("""
-            INSERT OR IGNORE INTO alunos (nusp,nome,email,curso,ano_ingresso)
-            VALUES (95633,'Ana Souza','ana@usp.br','Engenharia de Computação',2026)
-        """)
-        conexao.execute("""
-            INSERT OR IGNORE INTO disciplinas (codigo_disciplina,nome_disciplina)
-            VALUES ('COMP301','Inteligência Artificial')
-        """)
-        conexao.execute("""
-            INSERT OR IGNORE INTO matriculas
-              (id_matricula,nusp,codigo_disciplina,periodo,nota,frequencia)
-            VALUES (1,95633,'COMP301','2026-2',8.0,90.0)
-        """)
         conexao.commit()
     finally:
-        conexao.close()
-    print(f"Banco preparado: {CAMINHO_BANCO}")
+        banco.fechar()
+    print(f"Tabelas criadas em: {ARQUIVO_BANCO}")
 
 
 if __name__ == "__main__":
